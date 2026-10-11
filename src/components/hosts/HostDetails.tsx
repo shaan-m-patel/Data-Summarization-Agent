@@ -256,7 +256,7 @@ export function HostDetails({
         </PrimaryColumn>
 
         <SecondaryColumn>
-          <HostSummaryPanel host={host} />
+          <HostSummaryPanel host={host} datasetId={datasetId} />
 
           <Section>
             <SectionHeader>

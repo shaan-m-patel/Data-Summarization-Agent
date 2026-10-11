@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { clearDatasets } from "../../datasetStore";
+import { clearSessions } from "../../session";
 import { selectDatasetAction } from "../selectDataset";
 import { initialDatasetSelectionState } from "../types";
 
@@ -16,9 +17,7 @@ class MemoryFile extends Blob implements File {
     super(bits, options);
     this.name = fileName;
     this.lastModified = options?.lastModified ?? Date.now();
-    this.rawText = bits
-      .map((part) => toStringPart(part))
-      .join("");
+    this.rawText = bits.map((part) => toStringPart(part)).join("");
   }
 
   async text(): Promise<string> {
@@ -68,6 +67,20 @@ function toStringPart(part: BlobPart): string {
 
 vi.mock("server-only", () => ({}));
 
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get(name: string) {
+      const value = cookieJar.get(name);
+      return value ? { name, value } : undefined;
+    },
+    set(name: string, value: string) {
+      cookieJar.set(name, value);
+    },
+  }),
+}));
+
+const cookieJar = new Map<string, string>();
+
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
     redirectMock(url);
@@ -110,6 +123,8 @@ function buildValidDataset() {
 afterEach(() => {
   redirectMock.mockReset();
   clearDatasets();
+  clearSessions();
+  cookieJar.clear();
 });
 
 describe("selectDatasetAction", () => {
@@ -165,14 +180,16 @@ describe("selectDatasetAction", () => {
     expect(redirectMock).not.toHaveBeenCalled();
   });
 
-  it("redirects to the hosts page when the sample dataset is chosen", async () => {
+  it("stores the sample dataset for the session and redirects with its id", async () => {
     const form = new MockFormData();
     form.set("mode", "sample");
 
     await expect(
       selectDatasetAction(initialDatasetSelectionState, toFormData(form)),
-    ).rejects.toThrow(/REDIRECT:\/hosts\?dataset=sample/);
-    expect(redirectMock).toHaveBeenCalledWith("/hosts?dataset=sample");
+    ).rejects.toThrow(/REDIRECT:\/hosts\?dataset=[0-9a-f-]{36}/i);
+    expect(redirectMock).toHaveBeenCalledTimes(1);
+    expect(redirectMock.mock.calls[0][0]).toMatch(/\/hosts\?dataset=[0-9a-f-]{36}/i);
+    expect(redirectMock.mock.calls[0][0]).not.toContain("dataset=sample");
   });
 
   it("stores valid uploads and redirects with a generated dataset id", async () => {
