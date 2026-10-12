@@ -11,6 +11,7 @@ export interface StoredDatasetEntry {
   createdAt: number;
   source: DatasetSource;
   label?: string;
+  ownerSessionId: string;
 }
 
 const DATASET_TTL_MS = 15 * 60 * 1000;
@@ -48,6 +49,7 @@ export interface SaveDatasetOptions {
   normalized: NormalizedHost[];
   source: DatasetSource;
   label?: string;
+  ownerSessionId: string;
 }
 
 export function saveDataset({
@@ -55,6 +57,7 @@ export function saveDataset({
   normalized,
   source,
   label,
+  ownerSessionId,
 }: SaveDatasetOptions): string {
   const now = Date.now();
   pruneExpiredEntries(now);
@@ -67,6 +70,7 @@ export function saveDataset({
     createdAt: now,
     source,
     label,
+    ownerSessionId,
   });
 
   return id;
@@ -81,6 +85,18 @@ export function getDataset(id: string): StoredDatasetEntry | null {
   const now = Date.now();
   if (now - entry.createdAt > DATASET_TTL_MS) {
     datasetStore.delete(id);
+    return null;
+  }
+
+  return entry;
+}
+
+export function getDatasetForSession(
+  id: string,
+  ownerSessionId: string,
+): StoredDatasetEntry | null {
+  const entry = getDataset(id);
+  if (!entry || entry.ownerSessionId !== ownerSessionId) {
     return null;
   }
 

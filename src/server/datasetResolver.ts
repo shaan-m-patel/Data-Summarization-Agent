@@ -44,7 +44,8 @@ export async function resolveDatasetSelection(
       source: "sample",
       label: "Bundled sample dataset",
       hosts,
-      notice: "The requested dataset was not found or has expired. Showing the bundled sample instead.",
+      notice:
+        "The requested dataset was not found or has expired. Showing the bundled sample instead.",
       isFallback: true,
     };
   }
@@ -94,6 +95,9 @@ function buildDatasetNotice(source: DatasetSource): string | undefined {
   }
   if (source === "api") {
     return "API datasets are cached for this session only.";
+  }
+  if (source === "sample") {
+    return undefined;
   }
   return "Dataset ready. Explore risk indicators below.";
 }
